@@ -17,8 +17,10 @@ type IdentityServer interface {
 }
 */
 
-const (
-	defaultPluginCapability_Service_Type csi.PluginCapability_Service_Type = csi.PluginCapability_Service_CONTROLLER_SERVICE
+var (
+	defaultPluginCapability_Service_Types = []csi.PluginCapability_Service_Type{
+		csi.PluginCapability_Service_CONTROLLER_SERVICE,
+	}
 )
 
 type CSIIdentityServer struct {
@@ -27,20 +29,29 @@ type CSIIdentityServer struct {
 }
 
 func NewDefaultCSIIdentityServer(driver *HostPathDriver) *CSIIdentityServer {
-	capabilities := []*csi.PluginCapability{
-		{
+	capabilities := make([]*csi.PluginCapability, 0)
+
+	for _, svcType := range defaultPluginCapability_Service_Types {
+		cap := &csi.PluginCapability{
 			Type: &csi.PluginCapability_Service_{
 				Service: &csi.PluginCapability_Service{
-					Type: defaultPluginCapability_Service_Type,
+					Type: svcType,
 				},
-			},
-		},
+			}}
+
+		capabilities = append(capabilities, cap)
 	}
 
 	return NewCSIIdentityServerWithOpt(driver, capabilities)
 }
 
-func NewCSIIdentityServerWithOpt(driver *HostPathDriver, capabilities []*csi.PluginCapability) *CSIIdentityServer {
+func NewCSIIdentityServerWithOpt(driver *HostPathDriver, opts ...[]*csi.PluginCapability) *CSIIdentityServer {
+	capabilities := make([]*csi.PluginCapability, 0)
+
+	for _, opt := range opts {
+		capabilities = append(capabilities, opt...)
+	}
+
 	return &CSIIdentityServer{
 		driver:       driver,
 		capabilities: capabilities,
