@@ -1,6 +1,7 @@
 package lvm
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -15,8 +16,17 @@ var (
 
 func TestCreateLogicalVolume(t *testing.T) {
 	createLogicalVolume(testLV)
+	exist, _ := checkVolumeExists(testLV)
+	fmt.Println(exist)
 }
 
 func TestRemoveLogicalVolume(t *testing.T) {
 	removeLogicalVolume(testLV)
+	exist, _ := checkVolumeExists(testLV)
+	fmt.Println(exist)
+}
+
+func TestCheckVolumeExists(t *testing.T) {
+	exist, _ := checkVolumeExists(testLV)
+	fmt.Println(exist)
 }
