@@ -2,7 +2,7 @@ package lvm
 
 import (
 	"errors"
-	"sync"
+	"os"
 
 	"github.com/caoyingjunz/pixiulib/exec"
 	"k8s.io/klog/v2"
@@ -70,13 +70,6 @@ const (
 	lvRemove string = "lvremove"
 )
 
-// 全局变量
-var (
-	lvsMap *LVsMap = &LVsMap{
-		lvs: make(map[string]*LogicalVolume),
-	}
-)
-
 type PhysicalVolume struct {
 	Name        string
 	vgName      string
@@ -122,48 +115,6 @@ type LVList struct {
 	lvs []*LogicalVolume
 }
 
-type LVsMap struct {
-	mu  sync.RWMutex
-	lvs map[string]*LogicalVolume
-}
-
-func (lvsmap *LVsMap) addLV(lv *LogicalVolume) error {
-	lvsmap.mu.Lock()
-	defer lvsmap.mu.Unlock()
-
-	if lvsmap.checkLVExists(lv) {
-		klog.Infof("lv already exists, lvname: %s\n", lv.Name)
-		return errors.New("lv already exists")
-	}
-
-	lvsmap.lvs[lv.Name] = lv
-
-	return nil
-}
-
-func (lvsmap *LVsMap) checkLVExists(lv *LogicalVolume) bool {
-	lvsmap.mu.RLock()
-	defer lvsmap.mu.RUnlock()
-
-	_, exist := lvsmap.lvs[lv.Name]
-
-	return exist
-}
-
-func (lvsmap *LVsMap) deleteLV(lv *LogicalVolume) error {
-	lvsmap.mu.Lock()
-	defer lvsmap.mu.Unlock()
-
-	if !lvsmap.checkLVExists(lv) {
-		klog.Infof("lv doesn't exists, lvname: %s\n", lv.Name)
-		return errors.New("lv doesn't exists")
-	}
-
-	delete(lvsmap.lvs, lv.Name)
-
-	return nil
-}
-
 // vgcreate lvmvg /dev/loop10
 func NewVolumeGroup(name string, pvs []*PhysicalVolume) *VolumeGroup {
 	return &VolumeGroup{
@@ -194,7 +145,12 @@ func createLogicalVolume(lv *LogicalVolume) error {
 	}
 
 	// lv 是否存在检查
-	if lvsMap.checkLVExists(lv) {
+	exist, err := checkVolumeExists(lv)
+	if err != nil {
+		return err
+	}
+
+	if exist {
 		return errors.New("lv already exists")
 	}
 
@@ -209,13 +165,18 @@ func createLogicalVolume(lv *LogicalVolume) error {
 		return errors.New("lvcreate failed")
 	}
 
-	if err = lvsMap.addLV(lv); err != nil {
-		klog.Info("add lv to lvsMap failed")
-		return err
-	}
-
 	klog.Info(string(out))
 	return nil
+}
+
+func checkVolumeExists(lv *LogicalVolume) (bool, error) {
+	if _, err := os.Stat(lv.Path); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // lvremove /dev/lvmvg/test -f
@@ -231,7 +192,12 @@ func removeLogicalVolume(lv *LogicalVolume) error {
 	}
 
 	// lv 是否存在检查
-	if !lvsMap.checkLVExists(lv) {
+	exist, err := checkVolumeExists(lv)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
 		return errors.New("lv doesn't exists")
 	}
 
@@ -243,11 +209,6 @@ func removeLogicalVolume(lv *LogicalVolume) error {
 	if err != nil {
 		klog.Infof("lvremove failed, lvname: %s, vgname: %s, size: %v\n", lv.Name, lv.vgName, lv.Size)
 		return errors.New("lvremove failed")
-	}
-
-	if err := lvsMap.deleteLV(lv); err != nil {
-		klog.Info("remove lv from lvsMap failed")
-		return err
 	}
 
 	klog.Info(string(out))
