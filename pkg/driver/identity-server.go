@@ -1,4 +1,4 @@
-package hostpath
+package driver
 
 import (
 	"context"
@@ -24,11 +24,11 @@ var (
 )
 
 type CSIIdentityServer struct {
-	driver       *HostPathDriver
+	driver       *CSIDriver
 	capabilities []*csi.PluginCapability
 }
 
-func NewDefaultCSIIdentityServer(driver *HostPathDriver) *CSIIdentityServer {
+func NewDefaultCSIIdentityServer(driver *CSIDriver) *CSIIdentityServer {
 	capabilities := make([]*csi.PluginCapability, 0)
 
 	for _, svcType := range defaultPluginCapability_Service_Types {
@@ -45,7 +45,7 @@ func NewDefaultCSIIdentityServer(driver *HostPathDriver) *CSIIdentityServer {
 	return NewCSIIdentityServerWithOpt(driver, capabilities)
 }
 
-func NewCSIIdentityServerWithOpt(driver *HostPathDriver, opts ...[]*csi.PluginCapability) *CSIIdentityServer {
+func NewCSIIdentityServerWithOpt(driver *CSIDriver, opts ...[]*csi.PluginCapability) *CSIIdentityServer {
 	capabilities := make([]*csi.PluginCapability, 0)
 
 	for _, opt := range opts {

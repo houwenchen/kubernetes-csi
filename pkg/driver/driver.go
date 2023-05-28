@@ -1,4 +1,4 @@
-package hostpath
+package driver
 
 import (
 	"errors"
@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	defaultDriverName string = "hostpath.whou.io"
+	DefaultDriverName string = "csidriver.whou.io"
 )
 
-type HostPathDriver struct {
+type CSIDriver struct {
 	config Config
 
 	// gRPC calls involving any of the fields below must be serialized
@@ -29,12 +29,14 @@ type Config struct {
 	VendorVersion string //必须要有的，GetPluginInfo 会用到
 
 	VolumeDir string
+
+	EnableLVM bool
 }
 
-func NewHostPathDriver(cfg Config) (*HostPathDriver, error) {
+func NewCSIDriver(cfg *Config) (*CSIDriver, error) {
 	if cfg.DriverName == "" {
-		klog.Infof("cofig doesn't have filed DriverName, use default DriverName: %s\n", defaultDriverName)
-		cfg.DriverName = defaultDriverName
+		klog.Infof("cofig doesn't have filed DriverName, use default DriverName: %s\n", DefaultDriverName)
+		cfg.DriverName = DefaultDriverName
 	}
 
 	if len(cfg.NodeID) == 0 {
@@ -52,4 +54,17 @@ func NewHostPathDriver(cfg Config) (*HostPathDriver, error) {
 	}
 
 	return nil, nil
+}
+
+func (d *CSIDriver) Run() error {
+	s := NewNonBlockingGRPCServer()
+
+	ids := NewDefaultCSIIdentityServer(d)
+	cs := NewDefaultCSIControllerServer(d)
+	ns := NewDefaultCSINodeServer(d)
+
+	s.Start(d.config.EndPoint, ids, cs, ns)
+	s.Wait()
+
+	return nil
 }

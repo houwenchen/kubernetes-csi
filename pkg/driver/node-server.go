@@ -1,4 +1,4 @@
-package hostpath
+package driver
 
 import (
 	"context"
@@ -28,11 +28,11 @@ var (
 )
 
 type CSINodeServer struct {
-	driver       *HostPathDriver
+	driver       *CSIDriver
 	capabilities []*csi.NodeServiceCapability
 }
 
-func NewDefaultCSINodeServer(driver *HostPathDriver) *CSINodeServer {
+func NewDefaultCSINodeServer(driver *CSIDriver) *CSINodeServer {
 	capabilities := make([]*csi.NodeServiceCapability, 0)
 
 	for _, RPCType := range defaultNodeServiceCapability_RPC_Types {
@@ -49,7 +49,7 @@ func NewDefaultCSINodeServer(driver *HostPathDriver) *CSINodeServer {
 	return NewCSINodeServerWithOpt(driver, capabilities)
 }
 
-func NewCSINodeServerWithOpt(driver *HostPathDriver, opts ...[]*csi.NodeServiceCapability) *CSINodeServer {
+func NewCSINodeServerWithOpt(driver *CSIDriver, opts ...[]*csi.NodeServiceCapability) *CSINodeServer {
 	capabilities := make([]*csi.NodeServiceCapability, 0)
 
 	for _, opt := range opts {
