@@ -104,10 +104,10 @@ type VGList struct {
 type LogicalVolume struct {
 	Path     string
 	Name     string
-	vgName   string
+	VGName   string
 	UUID     string
-	lvAccess []string
-	lvStatus string
+	LVAccess []string
+	LVStatus string
 	Size     string
 }
 
@@ -129,23 +129,23 @@ func NewLogicalVolume(name string, vg *VolumeGroup, size string) *LogicalVolume 
 	return &LogicalVolume{
 		Path:   path,
 		Name:   name,
-		vgName: vg.Name,
+		VGName: vg.Name,
 		Size:   size,
 	}
 }
 
 // lvcreate -n test -L 5Gi lvmvg
-func createLogicalVolume(lv *LogicalVolume) error {
+func CreateLogicalVolume(lv *LogicalVolume) error {
 	// 构造 lvcreate 的命令
 	var createLVArg []string
 
-	if len(lv.Name) == 0 || len(lv.vgName) == 0 {
+	if len(lv.Name) == 0 || len(lv.VGName) == 0 {
 		klog.Info("lvname and vgname can't be empty")
 		return errors.New("miss lvname or vgname")
 	}
 
 	// lv 是否存在检查
-	exist, err := checkVolumeExists(lv)
+	exist, err := CheckVolumeExists(lv)
 	if err != nil {
 		return err
 	}
@@ -156,12 +156,12 @@ func createLogicalVolume(lv *LogicalVolume) error {
 
 	createLVArg = append(createLVArg, "-n", lv.Name)
 	createLVArg = append(createLVArg, "-L", lv.Size)
-	createLVArg = append(createLVArg, lv.vgName)
+	createLVArg = append(createLVArg, lv.VGName)
 
 	exec := exec.New()
 	out, err := exec.Command(lvCreate, createLVArg...).CombinedOutput()
 	if err != nil {
-		klog.Infof("lvcreate failed, lvname: %s, vgname: %s, size: %v\n", lv.Name, lv.vgName, lv.Size)
+		klog.Infof("lvcreate failed, lvname: %s, vgname: %s, size: %v\n", lv.Name, lv.VGName, lv.Size)
 		return errors.New("lvcreate failed")
 	}
 
@@ -169,7 +169,7 @@ func createLogicalVolume(lv *LogicalVolume) error {
 	return nil
 }
 
-func checkVolumeExists(lv *LogicalVolume) (bool, error) {
+func CheckVolumeExists(lv *LogicalVolume) (bool, error) {
 	if _, err := os.Stat(lv.Path); err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -180,7 +180,7 @@ func checkVolumeExists(lv *LogicalVolume) (bool, error) {
 }
 
 // lvremove /dev/lvmvg/test -f
-func removeLogicalVolume(lv *LogicalVolume) error {
+func RemoveLogicalVolume(lv *LogicalVolume) error {
 	// 构造 lvremove 的命令
 	var removeLVArg []string
 
@@ -192,7 +192,7 @@ func removeLogicalVolume(lv *LogicalVolume) error {
 	}
 
 	// lv 是否存在检查
-	exist, err := checkVolumeExists(lv)
+	exist, err := CheckVolumeExists(lv)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func removeLogicalVolume(lv *LogicalVolume) error {
 	exec := exec.New()
 	out, err := exec.Command(lvRemove, removeLVArg...).CombinedOutput()
 	if err != nil {
-		klog.Infof("lvremove failed, lvname: %s, vgname: %s, size: %v\n", lv.Name, lv.vgName, lv.Size)
+		klog.Infof("lvremove failed, lvname: %s, vgname: %s, size: %v\n", lv.Name, lv.VGName, lv.Size)
 		return errors.New("lvremove failed")
 	}
 

@@ -1,4 +1,4 @@
-package hostpath
+package driver
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/google/uuid"
+	"github.com/houwenchen/kubernetes-csi/pkg/lvm"
 	"k8s.io/klog/v2"
 )
 
@@ -49,11 +50,11 @@ var (
 )
 
 type CSIControllerServer struct {
-	driver       *HostPathDriver
+	driver       *CSIDriver
 	capabilities []*csi.ControllerServiceCapability
 }
 
-func NewDefaultCSIControllerServer(driver *HostPathDriver) *CSIControllerServer {
+func NewDefaultCSIControllerServer(driver *CSIDriver) *CSIControllerServer {
 	capabilities := make([]*csi.ControllerServiceCapability, 0)
 
 	for _, RPCType := range defaultControllerServiceCapability_RPC_Types {
@@ -70,7 +71,7 @@ func NewDefaultCSIControllerServer(driver *HostPathDriver) *CSIControllerServer 
 	return NewCSIControllerServerWithOpt(driver, capabilities)
 }
 
-func NewCSIControllerServerWithOpt(driver *HostPathDriver, opts ...[]*csi.ControllerServiceCapability) *CSIControllerServer {
+func NewCSIControllerServerWithOpt(driver *CSIDriver, opts ...[]*csi.ControllerServiceCapability) *CSIControllerServer {
 	capabilities := make([]*csi.ControllerServiceCapability, 0)
 
 	for _, opt := range opts {
@@ -100,7 +101,19 @@ func (ccs *CSIControllerServer) CreateVolume(ctx context.Context, req *csi.Creat
 	volumeContext["driver-name"] = ccs.driver.config.DriverName
 	volumeContext["volume-name"] = req.GetName()
 
-	// TODO: 增加 create volume 逻辑
+	// paras := req.GetParameters()
+
+	// TODO: 增加 create LV instance 逻辑
+	testLV := &lvm.LogicalVolume{
+		Path:   "/dev/lvmvg/test",
+		Name:   "test",
+		VGName: "lvmvg",
+		Size:   "5Gi",
+	}
+
+	if err = lvm.CreateLogicalVolume(testLV); err != nil {
+		return nil, err
+	}
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
