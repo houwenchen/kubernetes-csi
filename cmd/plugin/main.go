@@ -15,7 +15,8 @@ var (
 )
 
 var (
-	version = "v0.0.1"
+	version             = "v0.0.1"
+	defaultVolumePrefix = "/dev/lvmvg/" // 这里先预先假设 vg 已经创建
 )
 
 func init() {
@@ -30,6 +31,7 @@ func main() {
 		EndPoint:      *endpoint,
 		NodeID:        *nodeID,
 		VendorVersion: version,
+		VolumeDir:     defaultVolumePrefix,
 		EnableLVM:     *enableLVM,
 	}
 
