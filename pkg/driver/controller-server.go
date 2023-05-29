@@ -103,10 +103,12 @@ func (ccs *CSIControllerServer) CreateVolume(ctx context.Context, req *csi.Creat
 
 	// paras := req.GetParameters()
 
-	// TODO: 增加 create LV instance 逻辑
+	// TODO: 增加 create LV instance for create 逻辑
+	name := req.GetName()
+	path := ccs.driver.config.VolumeDir + "/" + name
 	testLV := &lvm.LogicalVolume{
-		Path:   "/dev/lvmvg/test",
-		Name:   "test",
+		Path:   path,
+		Name:   name,
 		VGName: "lvmvg",
 		Size:   "5Gi",
 	}
@@ -166,7 +168,40 @@ func (ccs *CSIControllerServer) validateVolumeCapabilitiesOfReq(caps []*csi.Volu
 }
 
 func (ccs *CSIControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	return nil, nil
+	klog.Info("start delete volume function")
+
+	// 对 delete volume 的请求进行校验
+	if err := ccs.validateDeleteVolumeRequest(req); err != nil {
+		return nil, err
+	}
+
+	// TODO: 增加 create LV instance for delete 逻辑
+	// TODO: 需要确认 volume id 是否就是 name
+	name := req.GetVolumeId()
+	path := "/dev/lvmvg/" + name
+	testLV := &lvm.LogicalVolume{
+		Path: path,
+		Name: name,
+	}
+
+	if err := lvm.RemoveLogicalVolume(testLV); err != nil {
+		return nil, err
+	}
+
+	return &csi.DeleteVolumeResponse{}, nil
+}
+
+// 对 DeleteVolumeRequest 的字段进行校验
+func (ccs *CSIControllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
+	klog.Info("start validate delete volume request")
+
+	// 检查 volume id
+	volumeID := req.GetVolumeId()
+	if volumeID == "" {
+		return errors.New("volume id is required")
+	}
+
+	return nil
 }
 
 func (ccs *CSIControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {

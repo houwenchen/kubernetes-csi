@@ -2,9 +2,7 @@ package driver
 
 import (
 	"errors"
-	"sync"
 
-	"google.golang.org/grpc/balancer/grpclb/state"
 	"k8s.io/klog/v2"
 )
 
@@ -13,13 +11,7 @@ var (
 )
 
 type CSIDriver struct {
-	config Config
-
-	// gRPC calls involving any of the fields below must be serialized
-	// by locking this mutex before starting. Internal helper
-	// functions assume that the mutex has been locked.
-	mutex sync.Mutex
-	state state.State
+	config *Config
 }
 
 type Config struct {
@@ -49,11 +41,9 @@ func NewCSIDriver(cfg *Config) (*CSIDriver, error) {
 		return nil, errors.New("miss driver endpoint")
 	}
 
-	if err := makeVolumeDir(cfg.VolumeDir); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	return &CSIDriver{
+		config: cfg,
+	}, nil
 }
 
 func (d *CSIDriver) Run() error {
