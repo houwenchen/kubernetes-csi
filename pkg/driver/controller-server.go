@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/google/uuid"
 	"github.com/houwenchen/kubernetes-csi/pkg/lvm"
 	"k8s.io/klog/v2"
 )
@@ -93,8 +92,8 @@ func (ccs *CSIControllerServer) CreateVolume(ctx context.Context, req *csi.Creat
 		return nil, err
 	}
 
-	// 生成唯一标识 volume 的 VolumeId
-	volumeId := uuid.New().String()
+	// 生成唯一标识 volume 的 VolumeId, 使用 volume name 作为 VolumeId
+	volumeId := req.GetName()
 
 	// 生成 VolumeContext
 	volumeContext := make(map[string]string)
@@ -103,17 +102,13 @@ func (ccs *CSIControllerServer) CreateVolume(ctx context.Context, req *csi.Creat
 
 	// paras := req.GetParameters()
 
-	// TODO: 增加 create LV instance for create 逻辑
-	name := req.GetName()
-	path := ccs.driver.config.VolumeDir + "/" + name
-	testLV := &lvm.LogicalVolume{
-		Path:   path,
-		Name:   name,
-		VGName: "lvmvg",
-		Size:   "5Gi",
+	// create LV instance for create
+	lvInstance, err := lvm.NewLogicalVolumeForCreate(ccs.driver.config, req)
+	if err != nil {
+		return nil, err
 	}
 
-	if err = lvm.CreateLogicalVolume(testLV); err != nil {
+	if err = lvm.CreateLogicalVolume(lvInstance); err != nil {
 		return nil, err
 	}
 
@@ -175,16 +170,13 @@ func (ccs *CSIControllerServer) DeleteVolume(ctx context.Context, req *csi.Delet
 		return nil, err
 	}
 
-	// TODO: 增加 create LV instance for delete 逻辑
-	// TODO: 需要确认 volume id 是否就是 name
-	name := req.GetVolumeId()
-	path := "/dev/lvmvg/" + name
-	testLV := &lvm.LogicalVolume{
-		Path: path,
-		Name: name,
+	// create LV instance for delete
+	lvInstance, err := lvm.NewLogicalVolumeForDelete(req)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := lvm.RemoveLogicalVolume(testLV); err != nil {
+	if err := lvm.RemoveLogicalVolume(lvInstance); err != nil {
 		return nil, err
 	}
 
@@ -204,10 +196,12 @@ func (ccs *CSIControllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolum
 	return nil
 }
 
+// TODO: 支持 EnableAttach，只有支持 attach 的时候才需要实现此方法
 func (ccs *CSIControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	return nil, nil
 }
 
+// TODO: 支持 EnableAttach，只有支持 attach 的时候才需要实现此方法
 func (ccs *CSIControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	return nil, nil
 }
