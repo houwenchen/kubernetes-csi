@@ -2,9 +2,13 @@ package lvm
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/caoyingjunz/pixiulib/exec"
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/houwenchen/kubernetes-csi/pkg/config"
 	"k8s.io/klog/v2"
 )
 
@@ -56,7 +60,7 @@ root@master:~/tmp/openebs# vgs
 
 // lvm 模块所需命令
 const (
-	defaultPathPrefix string = "/dev/"
+	defaultVolumePrefix = "/dev/" // vg 的根目录
 
 	listStorageBlock string = "lsblk"
 
@@ -79,10 +83,6 @@ type PhysicalVolume struct {
 	UUID        string
 }
 
-type PVList struct {
-	pvs []*PhysicalVolume
-}
-
 type VolumeGroup struct {
 	Name     string
 	Format   string
@@ -97,10 +97,6 @@ type VolumeGroup struct {
 	UUID     string
 }
 
-type VGList struct {
-	vgs []*VolumeGroup
-}
-
 type LogicalVolume struct {
 	Path     string
 	Name     string
@@ -109,10 +105,6 @@ type LogicalVolume struct {
 	LVAccess []string
 	LVStatus string
 	Size     string
-}
-
-type LVList struct {
-	lvs []*LogicalVolume
 }
 
 // vgcreate lvmvg /dev/loop10
@@ -134,6 +126,39 @@ func NewLogicalVolume(name string, vg *VolumeGroup, size string) *LogicalVolume 
 	}
 }
 
+// 根据 CreateVolumeRequest 生成 LV
+func NewLogicalVolumeForCreate(config *config.Config, req *csi.CreateVolumeRequest) (*LogicalVolume, error) {
+	name := req.GetName()
+	paras := req.GetParameters()
+	vgname, ok := paras["vgname"]
+	if !ok {
+		klog.Info("create volume request sholud contain para of vgname")
+		return nil, errors.New("miss vgname")
+	}
+
+	// TODO: 优化 size 的获取方式
+	size := req.GetCapacityRange().RequiredBytes
+
+	path := filepath.Join(config.VolumeDir, vgname, name)
+
+	return &LogicalVolume{
+		Path:   path,
+		Name:   name,
+		VGName: vgname,
+		Size:   fmt.Sprint(size),
+	}, nil
+}
+
+// 根据 DeleteVolumeRequest 生成 LV
+func NewLogicalVolumeForDelete(req *csi.DeleteVolumeRequest) (*LogicalVolume, error) {
+	name := req.GetVolumeId()
+	lv, err := lvsSet.getLVByName(name)
+	if err != nil {
+		return nil, err
+	}
+	return lv, nil
+}
+
 // lvcreate -n test -L 5Gi lvmvg
 func CreateLogicalVolume(lv *LogicalVolume) error {
 	// 构造 lvcreate 的命令
@@ -142,6 +167,12 @@ func CreateLogicalVolume(lv *LogicalVolume) error {
 	if len(lv.Name) == 0 || len(lv.VGName) == 0 {
 		klog.Info("lvname and vgname can't be empty")
 		return errors.New("miss lvname or vgname")
+	}
+
+	// TODO: 优化 size 的校验方式
+	if len(lv.Size) == 0 {
+		klog.Info("lvsize can't be empty")
+		return errors.New("miss lvsize")
 	}
 
 	// lv 是否存在检查
@@ -164,6 +195,9 @@ func CreateLogicalVolume(lv *LogicalVolume) error {
 		klog.Infof("lvcreate failed, lvname: %s, vgname: %s, size: %v\n", lv.Name, lv.VGName, lv.Size)
 		return errors.New("lvcreate failed")
 	}
+
+	// 数据归档入 lvsSet
+	lvsSet.addLV(lv)
 
 	klog.Info(string(out))
 	return nil
@@ -210,6 +244,9 @@ func RemoveLogicalVolume(lv *LogicalVolume) error {
 		klog.Infof("lvremove failed, lvname: %s, vgname: %s, size: %v\n", lv.Name, lv.VGName, lv.Size)
 		return errors.New("lvremove failed")
 	}
+
+	// 数据归档入 lvsSet
+	lvsSet.deleteLV(lv)
 
 	klog.Info(string(out))
 	return nil

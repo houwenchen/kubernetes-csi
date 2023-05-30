@@ -3,32 +3,18 @@ package driver
 import (
 	"errors"
 
+	"github.com/houwenchen/kubernetes-csi/pkg/config"
 	"k8s.io/klog/v2"
 )
 
-var (
-	DefaultDriverName string = "csidriver.whou.io"
-)
-
 type CSIDriver struct {
-	config *Config
+	config *config.Config
 }
 
-type Config struct {
-	DriverName    string //必须要有的，GetPluginInfo 会用到
-	EndPoint      string
-	NodeID        string
-	VendorVersion string //必须要有的，GetPluginInfo 会用到
-
-	VolumeDir string
-
-	EnableLVM bool
-}
-
-func NewCSIDriver(cfg *Config) (*CSIDriver, error) {
+func NewCSIDriver(cfg *config.Config) (*CSIDriver, error) {
 	if cfg.DriverName == "" {
-		klog.Infof("cofig doesn't have filed DriverName, use default DriverName: %s\n", DefaultDriverName)
-		cfg.DriverName = DefaultDriverName
+		klog.Infof("cofig doesn't have filed DriverName")
+		return nil, errors.New("miss field DriverName")
 	}
 
 	if len(cfg.NodeID) == 0 {
