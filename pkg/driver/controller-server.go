@@ -222,14 +222,17 @@ func (ccs *CSIControllerServer) ControllerGetCapabilities(ctx context.Context, r
 	return nil, nil
 }
 
+// TODO: snapshot 功能后续支持
 func (ccs *CSIControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	return nil, nil
 }
 
+// TODO: snapshot 功能后续支持
 func (ccs *CSIControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	return nil, nil
 }
 
+// TODO: snapshot 功能后续支持
 func (ccs *CSIControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	return nil, nil
 }
