@@ -60,42 +60,9 @@ root@master:~/tmp/openebs# vgs
 
 // lvm 模块所需命令
 const (
-	defaultVolumePrefix = "/dev/" // vg 的根目录
-
-	listStorageBlock string = "lsblk"
-
-	pvCreate string = "pvcreate"
-	pvList   string = "pvs"
-
-	vgCreate string = "vgcreate"
-	vgList   string = "vgs"
-
 	lvCreate string = "lvcreate"
 	lvRemove string = "lvremove"
 )
-
-type PhysicalVolume struct {
-	Name        string
-	vgName      string
-	Size        string
-	Allocatable bool
-	PESize      string
-	UUID        string
-}
-
-type VolumeGroup struct {
-	Name     string
-	Format   string
-	vgAccess []string
-	vgStatus string
-	MaxLV    int
-	CurLV    int
-	MaxPV    int
-	CurPV    int
-	Size     string
-	pvs      []*PhysicalVolume
-	UUID     string
-}
 
 type LogicalVolume struct {
 	Path     string
@@ -105,25 +72,6 @@ type LogicalVolume struct {
 	LVAccess []string
 	LVStatus string
 	Size     string
-}
-
-// vgcreate lvmvg /dev/loop10
-func NewVolumeGroup(name string, pvs []*PhysicalVolume) *VolumeGroup {
-	return &VolumeGroup{
-		Name: name,
-		pvs:  pvs,
-	}
-}
-
-func NewLogicalVolume(name string, vg *VolumeGroup, size string) *LogicalVolume {
-	path := "/dev/" + vg.Name + "/" + name
-
-	return &LogicalVolume{
-		Path:   path,
-		Name:   name,
-		VGName: vg.Name,
-		Size:   size,
-	}
 }
 
 // 根据 CreateVolumeRequest 生成 LV
